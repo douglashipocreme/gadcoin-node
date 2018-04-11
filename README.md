@@ -1,6 +1,6 @@
-Intense Coin is a cryptocurrency focused on providing a decentralized mechanism of exchange, and anonymity via untraceable and unlinkable transactions.
+Gadcoin is a cryptocurrency focused on providing a decentralized mechanism of exchange, and anonymity via untraceable and unlinkable transactions.
 
-## Building Intense Coin
+## Building Gadcoin
 
 ### On *nix
 
