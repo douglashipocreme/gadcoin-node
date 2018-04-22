@@ -13,7 +13,12 @@ You may download them from:
 * http://www.boost.org/
 * Alternatively, it may be possible to install them using a package manager.
 
-To build, change to a directory where this file is located, and run `make`. The resulting executables can be found in `build/release/src`.
+To build, change to a directory where this file is located, 
+create a folder: mkdir build
+cd build
+in build folder 
+cmake ..
+and run `make`. The resulting executables can be found in `build/release/src`.
 
 **Advanced options:**
 
