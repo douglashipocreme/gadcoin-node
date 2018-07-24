@@ -50,15 +50,9 @@
 using namespace PaymentService;
 
 void changeDirectory(const std::string& path) {
-#ifdef _WIN32
-  if (_chdir(path.c_str())) {
+  if (chdir(path.c_str())) {
     throw std::runtime_error("Couldn't change directory to \'" + path + "\': " + strerror(errno));
   }
-#else
-  if (chdir(path.c_str())) {
-	throw std::runtime_error("Couldn't change directory to \'" + path + "\': " + strerror(errno));
-  }
-#endif
 }
 
 void stopSignalHandler(PaymentGateService* pg) {
@@ -114,7 +108,8 @@ bool PaymentGateService::init(int argc, char** argv) {
 WalletConfiguration PaymentGateService::getWalletConfig() const {
   return WalletConfiguration{
     config.gateConfiguration.containerFile,
-    config.gateConfiguration.containerPassword
+    config.gateConfiguration.containerPassword,
+    config.gateConfiguration.syncFromZero
   };
 }
 
@@ -224,7 +219,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   std::unique_ptr<CryptoNote::INode> node(new CryptoNote::InProcessNode(core, protocol, *dispatcher));
 
   std::error_code nodeInitStatus;
-  node->init([&log, &nodeInitStatus](std::error_code ec) {
+  node->init([&nodeInitStatus](std::error_code ec) {
     nodeInitStatus = ec;
   });
 
@@ -270,7 +265,8 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
 void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, CryptoNote::INode& node) {
   PaymentService::WalletConfiguration walletConfiguration{
     config.gateConfiguration.containerFile,
-    config.gateConfiguration.containerPassword
+    config.gateConfiguration.containerPassword,
+    config.gateConfiguration.syncFromZero
   };
 
   std::unique_ptr<CryptoNote::WalletGreen> wallet(new CryptoNote::WalletGreen(*dispatcher, currency, node, logger));

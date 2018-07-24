@@ -156,7 +156,16 @@ void GetTransactionHashes::Response::serialize(CryptoNote::ISerializer& serializ
   serializer(items, "items");
 }
 
+void TransferRpcSpentOutput::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(amount, "amount");
+  serializer(key_image, "key_image");
+  serializer(tx_pub_key, "tx_pub_key");
+  serializer(out_index, "out_index");
+  serializer(mixin, "mixin");
+}
+
 void TransferRpcInfo::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(spentOutputs, "spentOutputs");
   serializer(type, "type");
   serializer(address, "address");
   serializer(amount, "amount");
@@ -168,6 +177,7 @@ void TransactionRpcInfo::serialize(CryptoNote::ISerializer& serializer) {
   serializer(blockIndex, "blockIndex");
   serializer(timestamp, "timestamp");
   serializer(isBase, "isBase");
+  serializer(mixin, "mixin");
   serializer(unlockTime, "unlockTime");
   serializer(amount, "amount");
   serializer(fee, "fee");
@@ -206,6 +216,15 @@ void GetTransactions::Request::serialize(CryptoNote::ISerializer& serializer) {
 }
 
 void GetTransactions::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(items, "items");
+}
+
+void GetUnconfirmedTransactions::Request::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(addresses, "addresses");
+  serializer(paymentId, "paymentId");
+}
+
+void GetUnconfirmedTransactions::Response::serialize(CryptoNote::ISerializer& serializer) {
   serializer(items, "items");
 }
 
@@ -311,6 +330,32 @@ void SendDelayedTransaction::Request::serialize(CryptoNote::ISerializer& seriali
 }
 
 void SendDelayedTransaction::Response::serialize(CryptoNote::ISerializer& serializer) {
+}
+
+void GetUnspendOuts::Request::serialize(CryptoNote::ISerializer& serializer) {
+  if (!serializer(address, "address")) {
+    throw RequestSerializationError();
+  }
+
+  serializer(viewKey, "viewKey");
+  serializer(amount, "amount");
+  serializer(mixIn, "mixIn");
+  serializer(useDust, "useDust");
+  serializer(dustThreshold, "dustThreshold");
+}
+
+void GetUnspendOuts::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(outputs, "outputs");
+}
+
+void TransactionOutputInformationSerialized::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(type, "type");
+  serializer(amount, "amount");
+  serializer(globalOutputIndex, "globalOutputIndex");
+  serializer(outputInTransaction, "outputInTransaction");
+  serializer(transactionHash, "transactionHash");
+  serializer(transactionPublicKey, "transactionPublicKey");
+  serializer(outputKey, "outputKey");
 }
 
 void SendFusionTransaction::Request::serialize(CryptoNote::ISerializer& serializer) {

@@ -263,15 +263,12 @@ void WalletUserTransactionsCache::getGoodTransaction(TransactionId txId, size_t 
     return;
   }
 
-  if (m_transfers.size() > 0) {
-	  auto testVal = m_transfers.begin();
-	  UserTransfers::const_iterator first = m_transfers.begin() + tx.firstTransferId;
-	  UserTransfers::const_iterator last = first + tx.transferCount;
+  UserTransfers::const_iterator first = m_transfers.begin() + tx.firstTransferId;
+  UserTransfers::const_iterator last = first + tx.transferCount;
 
-	  tx.firstTransferId -= offset;
+  tx.firstTransferId -= offset;
 
-	  std::copy(first, last, std::back_inserter(transfers));
-  }
+  std::copy(first, last, std::back_inserter(transfers));
 }
 
 void WalletUserTransactionsCache::getTransfersByTx(TransactionId id, UserTransfers& transfers) {

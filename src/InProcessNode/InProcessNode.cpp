@@ -753,33 +753,6 @@ std::error_code InProcessNode::doGetPoolSymmetricDifference(std::vector<Crypto::
   return ec;
 }
 
-void InProcessNode::getMultisignatureOutputByGlobalIndex(uint64_t amount, uint32_t gindex, MultisignatureOutput& out,
-                                                         const Callback& callback) {
-  std::unique_lock<std::mutex> lock(mutex);
-  if (state != INITIALIZED) {
-    lock.unlock();
-    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
-    return;
-  }
-
-  executeInDispatcherThread([=, &out] () {
-    auto ec = doGetOutputByMultisigGlobalIndex(amount, gindex, out);
-    executeInRemoteThread([callback, ec] () { callback(ec); });
-  });
-}
-
-std::error_code InProcessNode::doGetOutputByMultisigGlobalIndex(uint64_t amount, uint32_t gindex, MultisignatureOutput& out) {
-  std::error_code ec = std::error_code();
-  auto result = core.getMultisignatureOutput(amount, gindex);
-  if (!result) {
-    ec = make_error_code(std::errc::invalid_argument);
-    return ec;
-  }
-
-  out = result->first;
-  return ec;
-}
-
 void InProcessNode::getBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks,
                               const Callback& callback) {
   std::unique_lock<std::mutex> lock(mutex);
@@ -857,6 +830,35 @@ std::error_code InProcessNode::doGetBlocks(const std::vector<Crypto::Hash>& bloc
   return std::error_code();
 }
 
+
+void InProcessNode::extractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets,
+                                    std::vector<Crypto::PublicKey>& mixin_outputs, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  executeInDispatcherThread([=, &mixin_outputs] () {
+    auto ec = doExtractKeyOutputKeys(amount, absolute_offsets, mixin_outputs);
+    executeInRemoteThread([callback, ec] () { callback(ec); });
+  });
+}
+
+std::error_code InProcessNode::doExtractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets,
+                                                 std::vector<Crypto::PublicKey>& mixin_outputs) {
+  try {
+    core.extractKeyOutputKeys(amount, absolute_offsets, mixin_outputs);
+  } catch (std::system_error& e) {
+    return e.code();
+  } catch (std::exception&) {
+    return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
+  }
+
+
+  return std::error_code();
+}
 
 void InProcessNode::getTransactions(const std::vector<Crypto::Hash>& transactionHashes,
                                     std::vector<TransactionDetails>& transactions, const Callback& callback) {

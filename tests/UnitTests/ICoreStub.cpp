@@ -187,6 +187,12 @@ Crypto::Hash ICoreStub::getTopBlockHash() const {
   return topId;
 }
 
+void ICoreStub::extractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets, std::vector<Crypto::PublicKey>& mixin_outputs) const {
+
+  // Maybe do real test someday
+
+}
+
 void ICoreStub::getTransactions(const std::vector<Crypto::Hash>& txs_ids, std::vector<CryptoNote::BinaryArray>& txs,
                                 std::vector<Crypto::Hash>& missed_txs) const {
   for (const Crypto::Hash& hash : txs_ids) {

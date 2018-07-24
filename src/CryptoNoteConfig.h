@@ -29,20 +29,24 @@ const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
 const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 20844;
 const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW         = 14;
-const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
+const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 500;
 
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(18446744073709551615);
+const size_t MIN_MIXIN                          = 0;
+const uint8_t MANDATORY_MIXIN_BLOCK_VERSION     = 0;
+const uint32_t MIXIN_START_HEIGHT                          = 0;
+const uint32_t MANDATORY_TRANSACTION                          = 0;
 const uint32_t KILL_HEIGHT                          = 0;
-const uint64_t FINAL_SUBSIDY_PER_MINUTE		  = UINT64_C(2900000000);
-const uint32_t ZAWY_DIFFICULTY_BLOCK_INDEX                 = 10;
-const size_t ZAWY_DIFFICULTY_V2                          = 0;
-const uint8_t ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION   = 0;
 const uint64_t TAIL_EMISSION_REWARD                          = 0;
+const uint32_t ZAWY_LWMA2_DIFFICULTY_BLOCK_INDEX                 = 115000;
+const uint32_t ZAWY_LWMA2_DIFFICULTY_LAST_BLOCK                 = uint32_t(-1);
+const uint64_t ZAWY_LWMA2_DIFFICULTY_MIN                 = 1;
+const size_t ZAWY_LWMA2_DIFFICULTY_N                 = 70+1;
 const unsigned EMISSION_SPEED_FACTOR                         = 21;
-const uint64_t GENESIS_BLOCK_REWARD                          = UINT64_C(1844674407370955300);
+const uint64_t GENESIS_BLOCK_REWARD                          = UINT64_C(0);
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
@@ -54,13 +58,14 @@ const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
 const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 9;
 const uint64_t MINIMUM_FEE                                   = UINT64_C(1000000);
 const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1000000);
-const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = 100000000000000;
+const uint64_t MAX_TRANSACTION_SIZE_LIMIT                          = 100000;
+const uint64_t DEFAULT_FEE                          = MINIMUM_FEE;
 
-const uint64_t DIFFICULTY_TARGET                             = 90; // seconds
+const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
 const size_t   DIFFICULTY_WINDOW                                = 17;
-const size_t   DIFFICULTY_WINDOW_V1                          = 960;
-const size_t   DIFFICULTY_WINDOW_V2                          = 960;
+const size_t   DIFFICULTY_WINDOW_V1                          = 720;
+const size_t   DIFFICULTY_WINDOW_V2                          = 720;
 const size_t   DIFFICULTY_CUT                                = 0;  // timestamps to cut after sorting
 const size_t   DIFFICULTY_CUT_V1                             = 60;
 const size_t   DIFFICULTY_CUT_V2                             = 60;
@@ -69,10 +74,8 @@ const size_t   DIFFICULTY_LAG_V1                             = 15;
 const size_t   DIFFICULTY_LAG_V2                             = 15;
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-const size_t   MAX_BLOCK_SIZE_INITIAL                        = 10000000;
+const size_t   MAX_BLOCK_SIZE_INITIAL                        = 100000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
-const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2		 = 35 * 100 * 1024;
-const size_t   MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK			 = 5;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 
 const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS     = 1;
@@ -87,9 +90,8 @@ const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
 const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
-const uint32_t UPGRADE_HEIGHT_V2                                = 1;
-const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE				 = 65000;
-const uint32_t UPGRADE_HEIGHT_V3                                = 2;
+const uint32_t UPGRADE_HEIGHT_V2                                = 2;
+const uint32_t UPGRADE_HEIGHT_V3                                = 115000;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -144,7 +146,6 @@ const uint32_t  P2P_IDLE_CONNECTION_KILL_INTERVAL               = (5*60); //5 mi
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "";
 
 const char* const SEED_NODES[] = { "165.227.198.22:36841", "67.205.162.81:36841" };
-
 
 struct CheckpointData {
   uint32_t index;

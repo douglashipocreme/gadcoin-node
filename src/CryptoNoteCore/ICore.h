@@ -67,6 +67,7 @@ public:
                                std::vector<BlockShortInfo>& entries) const = 0;
 
   virtual bool hasTransaction(const Crypto::Hash& transactionHash) const = 0;
+virtual void extractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets, std::vector<Crypto::PublicKey>& mixin_outputs) const = 0;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes,
                                std::vector<BinaryArray>& transactions,
                                std::vector<Crypto::Hash>& missedHashes) const = 0;
@@ -85,8 +86,6 @@ public:
                                 std::vector<Crypto::PublicKey>& publicKeys) const = 0;
 
   virtual bool addTransactionToPool(const BinaryArray& transactionBinaryArray) = 0;
-  virtual boost::optional<std::pair<MultisignatureOutput, uint64_t>>
-  getMultisignatureOutput(uint64_t amount, uint32_t globalIndex) const = 0;
 
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const = 0;
   virtual bool getPoolChanges(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes,

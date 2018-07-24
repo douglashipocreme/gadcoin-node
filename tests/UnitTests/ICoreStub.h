@@ -81,6 +81,7 @@ public:
 
   virtual Crypto::Hash getBlockHashByIndex(uint32_t height) const override;
   virtual CryptoNote::BlockTemplate getBlockByHash(const Crypto::Hash &h) const override;
+  virtual void extractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets, std::vector<Crypto::PublicKey>& mixin_outputs) const override;
   virtual void getTransactions(const std::vector<Crypto::Hash>& txs_ids, std::vector<CryptoNote::BinaryArray>& txs, std::vector<Crypto::Hash>& missed_txs) const override;
   virtual CryptoNote::Difficulty getBlockDifficulty(uint32_t index) const override;
 
@@ -96,8 +97,6 @@ public:
 
   void setPoolTxVerificationResult(bool result);
   void setPoolChangesResult(bool result);
-  boost::optional<std::pair<CryptoNote::MultisignatureOutput, uint64_t>>
-  getMultisignatureOutput(uint64_t amount, uint32_t globalIndex) const override { return {}; }
 
   virtual bool hasTransaction(const Crypto::Hash& transactionHash) const override;
   virtual CryptoNote::BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const override;

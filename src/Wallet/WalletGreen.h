@@ -61,8 +61,8 @@ public:
   virtual std::string createAddress(const Crypto::SecretKey& spendSecretKey) override;
   virtual std::string createAddress(const Crypto::PublicKey& spendPublicKey) override;
   virtual std::vector<std::string> createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys) override;
+  virtual std::vector<WalletOutput> getAddressOutputs(const std::string& address) const override;
   virtual void deleteAddress(const std::string& address) override;
-  virtual void resetPendingTransactions();
 
   virtual uint64_t getActualBalance() const override;
   virtual uint64_t getActualBalance(const std::string& address) const override;
@@ -77,6 +77,8 @@ public:
   virtual WalletTransactionWithTransfers getTransaction(const Crypto::Hash& transactionHash) const override;
   virtual std::vector<TransactionsInBlockInfo> getTransactions(const Crypto::Hash& blockHash, size_t count) const override;
   virtual std::vector<TransactionsInBlockInfo> getTransactions(uint32_t blockIndex, size_t count) const override;
+virtual std::vector<CryptoNote::TransactionDetails> getTransactionsDetails(const std::vector<Crypto::Hash>& txHashes) const override;
+virtual std::vector<Crypto::PublicKey> extractKeyOutputKeys(uint64_t amount, const std::vector<uint32_t>& absolute_offsets) const override;
   virtual std::vector<Crypto::Hash> getBlockHashes(uint32_t blockIndex, size_t count) const override;
   virtual uint32_t getBlockCount() const override;
   virtual std::vector<WalletTransactionWithTransfers> getUnconfirmedTransactions() const override;
@@ -369,6 +371,7 @@ protected:
   uint64_t m_pendingBalance;
 
   uint64_t m_upperTransactionSizeLimit;
+  uint32_t m_totalBlockCount;
   uint32_t m_transactionSoftLockTime;
 
   BlockHashesContainer m_blockchain;

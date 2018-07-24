@@ -1,7 +1,7 @@
 //  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under both the GPLv2 (found in the
-//  COPYING file in the root directory) and Apache 2.0 License
-//  (found in the LICENSE.Apache file in the root directory).
+//  This source code is licensed under the BSD-style license found in the
+//  LICENSE file in the root directory of this source tree. An additional grant
+//  of patent rights can be found in the PATENTS file in the same directory.
 
 #ifndef ROCKSDB_LITE
 #ifndef __STDC_FORMAT_MACROS
@@ -13,10 +13,10 @@
 #include <cctype>
 #include <unordered_map>
 
-#include "options/options_parser.h"
 #include "rocksdb/db.h"
 #include "rocksdb/table.h"
 #include "rocksdb/utilities/options_util.h"
+#include "util/options_parser.h"
 #include "util/random.h"
 #include "util/testharness.h"
 #include "util/testutil.h"
@@ -24,8 +24,8 @@
 #ifndef GFLAGS
 bool FLAGS_enable_print = false;
 #else
-#include "util/gflags_compat.h"
-using GFLAGS_NAMESPACE::ParseCommandLineFlags;
+#include <gflags/gflags.h>
+using GFLAGS::ParseCommandLineFlags;
 DEFINE_bool(enable_print, false, "Print options generated to console.");
 #endif  // GFLAGS
 
@@ -100,35 +100,28 @@ class DummyTableFactory : public TableFactory {
   DummyTableFactory() {}
   virtual ~DummyTableFactory() {}
 
-  virtual const char* Name() const override { return "DummyTableFactory"; }
+  virtual const char* Name() const { return "DummyTableFactory"; }
 
-  virtual Status NewTableReader(
-      const TableReaderOptions& /*table_reader_options*/,
-      unique_ptr<RandomAccessFileReader>&& /*file*/, uint64_t /*file_size*/,
-      unique_ptr<TableReader>* /*table_reader*/,
-      bool /*prefetch_index_and_filter_in_cache*/) const override {
+  virtual Status NewTableReader(const TableReaderOptions& table_reader_options,
+                                unique_ptr<RandomAccessFileReader>&& file,
+                                uint64_t file_size,
+                                unique_ptr<TableReader>* table_reader,
+                                bool prefetch_index_and_filter_in_cache) const {
     return Status::NotSupported();
   }
 
   virtual TableBuilder* NewTableBuilder(
-      const TableBuilderOptions& /*table_builder_options*/,
-      uint32_t /*column_family_id*/,
-      WritableFileWriter* /*file*/) const override {
+      const TableBuilderOptions& table_builder_options,
+      uint32_t column_family_id, WritableFileWriter* file) const {
     return nullptr;
   }
 
-  virtual Status SanitizeOptions(
-      const DBOptions& /*db_opts*/,
-      const ColumnFamilyOptions& /*cf_opts*/) const override {
+  virtual Status SanitizeOptions(const DBOptions& db_opts,
+                                 const ColumnFamilyOptions& cf_opts) const {
     return Status::NotSupported();
   }
 
-  virtual std::string GetPrintableTableOptions() const override { return ""; }
-
-  Status GetOptionString(std::string* /*opt_string*/,
-                         const std::string& /*delimiter*/) const override {
-    return Status::OK();
-  }
+  virtual std::string GetPrintableTableOptions() const { return ""; }
 };
 
 class DummyMergeOperator : public MergeOperator {
@@ -136,15 +129,15 @@ class DummyMergeOperator : public MergeOperator {
   DummyMergeOperator() {}
   virtual ~DummyMergeOperator() {}
 
-  virtual bool FullMergeV2(const MergeOperationInput& /*merge_in*/,
-                           MergeOperationOutput* /*merge_out*/) const override {
+  virtual bool FullMergeV2(const MergeOperationInput& merge_in,
+                           MergeOperationOutput* merge_out) const override {
     return false;
   }
 
-  virtual bool PartialMergeMulti(const Slice& /*key*/,
-                                 const std::deque<Slice>& /*operand_list*/,
-                                 std::string* /*new_value*/,
-                                 Logger* /*logger*/) const override {
+  virtual bool PartialMergeMulti(const Slice& key,
+                                 const std::deque<Slice>& operand_list,
+                                 std::string* new_value,
+                                 Logger* logger) const override {
     return false;
   }
 
@@ -163,10 +156,10 @@ class DummySliceTransform : public SliceTransform {
   virtual Slice Transform(const Slice& src) const { return src; }
 
   // determine whether this is a valid src upon the function applies
-  virtual bool InDomain(const Slice& /*src*/) const { return false; }
+  virtual bool InDomain(const Slice& src) const { return false; }
 
   // determine whether dst=Transform(src) for some src
-  virtual bool InRange(const Slice& /*dst*/) const { return false; }
+  virtual bool InRange(const Slice& dst) const { return false; }
 };
 
 }  // namespace
@@ -239,7 +232,7 @@ TEST_F(OptionsUtilTest, SanityCheck) {
         CheckOptionsCompatibility(dbname_, Env::Default(), db_opt, cf_descs));
 
     cf_descs[1].options.prefix_extractor.reset(new DummySliceTransform());
-    ASSERT_OK(
+    ASSERT_NOK(
         CheckOptionsCompatibility(dbname_, Env::Default(), db_opt, cf_descs));
 
     cf_descs[1].options.prefix_extractor = prefix_extractor;
@@ -311,7 +304,7 @@ int main(int argc, char** argv) {
 #else
 #include <cstdio>
 
-int main(int /*argc*/, char** /*argv*/) {
+int main(int argc, char** argv) {
   printf("Skipped in RocksDBLite as utilities are not supported.\n");
   return 0;
 }

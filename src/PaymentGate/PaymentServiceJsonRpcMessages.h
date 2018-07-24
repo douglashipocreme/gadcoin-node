@@ -21,6 +21,7 @@
 #include <limits>
 #include <vector>
 
+#include "CryptoNote.h"
 #include "Serialization/ISerializer.h"
 
 namespace PaymentService {
@@ -216,7 +217,15 @@ struct GetTransactionHashes {
   };
 };
 
+struct TransferRpcSpentOutput: CryptoNote::TransferSpentOutput {
+//  explicit TransferRpcSpentOutput(const CryptoNote::TransferSpentOutput& transferSpentOutput):
+//    CryptoNote::TransferSpentOutput(transferSpentOutput) { }
+
+  void serialize(CryptoNote::ISerializer& serializer);
+};
+
 struct TransferRpcInfo {
+  std::vector<TransferRpcSpentOutput> spentOutputs;
   uint8_t type;
   std::string address;
   int64_t amount;
@@ -230,6 +239,7 @@ struct TransactionRpcInfo {
   uint32_t blockIndex;
   uint64_t timestamp;
   bool isBase;
+  uint64_t mixin;
   uint64_t unlockTime;
   int64_t amount;
   uint64_t fee;
@@ -267,6 +277,21 @@ struct GetTransactions {
     std::string blockHash;
     uint32_t firstBlockIndex = std::numeric_limits<uint32_t>::max();
     uint32_t blockCount;
+    std::string paymentId;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::vector<TransactionsInBlockRpcInfo> items;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct GetUnconfirmedTransactions {
+  struct Request {
+    std::vector<std::string> addresses;
     std::string paymentId;
 
     void serialize(CryptoNote::ISerializer& serializer);
@@ -374,6 +399,40 @@ struct SendDelayedTransaction {
   };
 
   struct Response {
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct TransactionOutputInformationSerialized {
+  // output info
+  uint8_t type;
+  uint64_t amount;
+  uint32_t globalOutputIndex;
+  uint32_t outputInTransaction;
+
+  // transaction info
+  std::string transactionHash;
+  std::string transactionPublicKey;
+  std::string outputKey;         // Type: Key 
+
+  void serialize(CryptoNote::ISerializer& serializer);
+};
+
+struct GetUnspendOuts {
+  struct Request {
+    std::string address;
+    std::string viewKey;
+    uint64_t amount;
+    uint32_t mixIn;
+    bool useDust;
+    uint64_t dustThreshold;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::vector<TransactionOutputInformationSerialized> outputs;
+
     void serialize(CryptoNote::ISerializer& serializer);
   };
 };

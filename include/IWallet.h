@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include "CryptoNote.h"
+#include "BlockchainExplorerData.h"
 
 namespace CryptoNote {
 
@@ -70,6 +71,19 @@ struct WalletEvent {
     WalletTransactionUpdatedData transactionUpdated;
     WalletSynchronizationProgressUpdated synchronizationProgressUpdated;
   };
+};
+
+struct WalletOutput {
+  // output info
+  uint8_t type;
+  uint64_t amount;
+  uint32_t globalOutputIndex;
+  uint32_t outputInTransaction;
+
+  // transaction info
+  std::string transactionHash;
+  std::string transactionPublicKey;
+  std::string outputKey;         // Type: Key 
 };
 
 struct WalletTransaction {
@@ -151,6 +165,7 @@ public:
   virtual std::string createAddress(const Crypto::SecretKey& spendSecretKey) = 0;
   virtual std::string createAddress(const Crypto::PublicKey& spendPublicKey) = 0;
   virtual std::vector<std::string> createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys) = 0;
+  virtual std::vector<WalletOutput> getAddressOutputs(const std::string& address) const = 0;
   virtual void deleteAddress(const std::string& address) = 0;
 
   virtual uint64_t getActualBalance() const = 0;
@@ -166,6 +181,8 @@ public:
   virtual WalletTransactionWithTransfers getTransaction(const Crypto::Hash& transactionHash) const = 0;
   virtual std::vector<TransactionsInBlockInfo> getTransactions(const Crypto::Hash& blockHash, size_t count) const = 0;
   virtual std::vector<TransactionsInBlockInfo> getTransactions(uint32_t blockIndex, size_t count) const = 0;
+virtual std::vector<CryptoNote::TransactionDetails> getTransactionsDetails(const std::vector<Crypto::Hash>& txHashes) const = 0;
+virtual std::vector<Crypto::PublicKey> extractKeyOutputKeys(uint64_t amount, const std::vector<uint32_t>& absolute_offsets) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashes(uint32_t blockIndex, size_t count) const = 0;
   virtual uint32_t getBlockCount() const  = 0;
   virtual std::vector<WalletTransactionWithTransfers> getUnconfirmedTransactions() const = 0;

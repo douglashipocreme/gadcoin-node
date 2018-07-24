@@ -454,17 +454,6 @@ void NodeRpcProxy::getPoolSymmetricDifference(std::vector<Crypto::Hash>&& knownP
     return this->doGetPoolSymmetricDifference(std::move(knownPoolTxIds), knownBlockId, isBcActual, newTxs, deletedTxIds); } , callback);
 }
 
-void NodeRpcProxy::getMultisignatureOutputByGlobalIndex(uint64_t amount, uint32_t gindex, MultisignatureOutput& out, const Callback& callback) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  if (m_state != STATE_INITIALIZED) {
-    callback(make_error_code(error::NOT_INITIALIZED));
-    return;
-  }
-
-  // TODO NOT IMPLEMENTED
-  callback(std::error_code());
-}
-
 void NodeRpcProxy::getBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks, const Callback& callback) {
   std::lock_guard<std::mutex> lock(m_mutex);
   if (m_state != STATE_INITIALIZED) {
@@ -484,6 +473,31 @@ void NodeRpcProxy::getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::
   }
 
   scheduleRequest(std::bind(&NodeRpcProxy::doGetBlocks, this, std::cref(blockHashes), std::ref(blocks)), callback);
+}
+
+void NodeRpcProxy::extractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets, std::vector<Crypto::PublicKey>& mixin_outputs, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  scheduleRequest(std::bind(&NodeRpcProxy::doExtractKeyOutputKeys, this, amount, std::cref(absolute_offsets), std::ref(mixin_outputs)), callback);
+}
+
+std::error_code NodeRpcProxy::doExtractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets, std::vector<Crypto::PublicKey>& mixin_outputs) {
+  COMMAND_RPC_GET_KEY_OUTPUT_KEYS::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_KEY_OUTPUT_KEYS::response resp = AUTO_VAL_INIT(resp);
+
+  req.amount = amount;
+  req.absolute_offsets = absolute_offsets;
+  std::error_code ec = binaryCommand("/get_key_output_keys.bin", req, resp);
+  if (ec) {
+    return ec;
+  }
+
+  mixin_outputs = std::move(resp.mixin_outputs);
+  return ec;
 }
 
 void NodeRpcProxy::getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) {

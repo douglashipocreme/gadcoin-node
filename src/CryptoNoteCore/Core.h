@@ -73,6 +73,7 @@ public:
     uint32_t& startIndex, uint32_t& currentIndex, uint32_t& fullOffset, std::vector<BlockShortInfo>& entries) const override;
 
   virtual bool hasTransaction(const Crypto::Hash& transactionHash) const override;
+virtual void extractKeyOutputKeys(const uint64_t amount, const std::vector<uint32_t>& absolute_offsets, std::vector<Crypto::PublicKey>& mixin_outputs) const override;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<BinaryArray>& transactions, std::vector<Crypto::Hash>& missedHashes) const override;
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const override;
@@ -105,8 +106,6 @@ public:
   virtual uint64_t getTotalGeneratedAmount() const override;
   virtual std::vector<BlockTemplate> getAlternativeBlocks() const override;
   virtual std::vector<Transaction> getPoolTransactions() const override;
-  boost::optional<std::pair<MultisignatureOutput, uint64_t>>
-  getMultisignatureOutput(uint64_t amount, uint32_t globalIndex) const override;
 
   const Currency& getCurrency() const;
 
@@ -144,7 +143,9 @@ private:
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
 
-  std::error_code validateSemantic(const Transaction& transaction, uint64_t& fee);
+bool f_getMixin(const Transaction& transaction, uint64_t& mixin);
+std::error_code validateMixin(const Transaction& transaction, uint8_t majorBlockVersion);
+  std::error_code validateSemantic(const Transaction& transaction, uint64_t& fee, uint32_t blockIndex);
   std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex);
   
   uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const;

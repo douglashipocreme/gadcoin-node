@@ -105,37 +105,44 @@ SpentOutputDescriptor::SpentOutputDescriptor() :
     m_type(TransactionTypes::OutputType::Invalid) {
 }
 
-SpentOutputDescriptor::SpentOutputDescriptor(const TransactionOutputInformationIn& transactionInfo) :
+SpentOutputDescriptor::SpentOutputDescriptor(const TransactionOutputInformationIn& transactionInfo, bool trackingMode) :
+    m_trackingMode(trackingMode),
     m_type(transactionInfo.type),
     m_amount(0),
     m_globalOutputIndex(0) {
   if (m_type == TransactionTypes::OutputType::Key) {
-    m_keyImage = &transactionInfo.keyImage;
-  } else if (m_type == TransactionTypes::OutputType::Multisignature) {
-    m_amount = transactionInfo.amount;
-    m_globalOutputIndex = transactionInfo.globalOutputIndex;
+    if (m_trackingMode == 1) {
+      m_amount = transactionInfo.amount;
+      m_globalOutputIndex = transactionInfo.globalOutputIndex;
+    } else {
+      m_keyImage = &transactionInfo.keyImage;
+    }
   } else {
     assert(false);
   }
+}
+
+SpentOutputDescriptor::SpentOutputDescriptor(uint64_t amount, uint32_t globalOutputIndex, bool trackingMode) {
+  assign(amount, globalOutputIndex, trackingMode);
 }
 
 SpentOutputDescriptor::SpentOutputDescriptor(const KeyImage* keyImage) {
   assign(keyImage);
 }
 
-SpentOutputDescriptor::SpentOutputDescriptor(uint64_t amount, uint32_t globalOutputIndex) {
-  assign(amount, globalOutputIndex);
+void SpentOutputDescriptor::assign(uint64_t amount, uint32_t globalOutputIndex, bool trackingMode) {
+  m_trackingMode = trackingMode;
+  if (m_trackingMode) {
+    m_type = TransactionTypes::OutputType::Key;
+  }
+  m_amount = amount;
+  m_globalOutputIndex = globalOutputIndex;
 }
 
 void SpentOutputDescriptor::assign(const KeyImage* keyImage) {
+  m_trackingMode = 0;
   m_type = TransactionTypes::OutputType::Key;
   m_keyImage = keyImage;
-}
-
-void SpentOutputDescriptor::assign(uint64_t amount, uint32_t globalOutputIndex) {
-  m_type = TransactionTypes::OutputType::Multisignature;
-  m_amount = amount;
-  m_globalOutputIndex = globalOutputIndex;
 }
 
 bool SpentOutputDescriptor::isValid() const {
@@ -144,9 +151,11 @@ bool SpentOutputDescriptor::isValid() const {
 
 bool SpentOutputDescriptor::operator==(const SpentOutputDescriptor& other) const {
   if (m_type == TransactionTypes::OutputType::Key) {
-    return other.m_type == m_type && *other.m_keyImage == *m_keyImage;
-  } else if (m_type == TransactionTypes::OutputType::Multisignature) {
-    return other.m_type == m_type && other.m_amount == m_amount && other.m_globalOutputIndex == m_globalOutputIndex;
+    if (m_trackingMode == 1) {
+      return other.m_type == m_type && other.m_amount == m_amount && other.m_globalOutputIndex == m_globalOutputIndex;
+    } else {
+      return other.m_type == m_type && *other.m_keyImage == *m_keyImage;
+    }
   } else {
     assert(false);
     return false;
@@ -155,12 +164,14 @@ bool SpentOutputDescriptor::operator==(const SpentOutputDescriptor& other) const
 
 size_t SpentOutputDescriptor::hash() const {
   if (m_type == TransactionTypes::OutputType::Key) {
-    static_assert(sizeof(size_t) < sizeof(*m_keyImage), "sizeof(size_t) < sizeof(*m_keyImage)");
-    return *reinterpret_cast<const size_t*>(m_keyImage->data);
-  } else if (m_type == TransactionTypes::OutputType::Multisignature) {
-    size_t hashValue = boost::hash_value(m_amount);
-    boost::hash_combine(hashValue, m_globalOutputIndex);
-    return hashValue;
+    if (m_trackingMode == 1) {
+      size_t hashValue = boost::hash_value(m_amount);
+      boost::hash_combine(hashValue, m_globalOutputIndex);
+      return hashValue;
+    } else {
+      static_assert(sizeof(size_t) < sizeof(*m_keyImage), "sizeof(size_t) < sizeof(*m_keyImage)");
+      return *reinterpret_cast<const size_t*>(m_keyImage->data);
+    }
   } else {
     assert(false);
     return 0;
@@ -176,6 +187,11 @@ TransfersContainer::TransfersContainer(const Currency& currency, Logging::ILogge
 }
 
 bool TransfersContainer::addTransaction(const TransactionBlockInfo& block, const ITransactionReader& tx,
+  const std::vector<TransactionOutputInformationIn>& transfers) {
+  return addTransaction(0, block, tx, transfers);
+}
+
+bool TransfersContainer::addTransaction(const bool trackingMode, const TransactionBlockInfo& block, const ITransactionReader& tx,
   const std::vector<TransactionOutputInformationIn>& transfers) {
 
   try {
@@ -193,8 +209,13 @@ bool TransfersContainer::addTransaction(const TransactionBlockInfo& block, const
       throw std::invalid_argument(message);
     }
 
-    bool added = addTransactionOutputs(block, tx, transfers);
-    added |= addTransactionInputs(block, tx);
+      bool added = addTransactionOutputs(trackingMode, block, tx, transfers);
+      if (trackingMode) {
+// not sure if has to be 'added'
+        added |= addTransactionTrackingModeInputs(block, tx);
+      } else {
+        added |= addTransactionInputs(block, tx);
+      }
 
     if (added) {
       addTransaction(block, tx);
@@ -244,7 +265,7 @@ void TransfersContainer::addTransaction(const TransactionBlockInfo& block, const
 /**
  * \pre m_mutex is locked.
  */
-bool TransfersContainer::addTransactionOutputs(const TransactionBlockInfo& block, const ITransactionReader& tx,
+bool TransfersContainer::addTransactionOutputs(bool trackingMode, const TransactionBlockInfo& block, const ITransactionReader& tx,
                                                const std::vector<TransactionOutputInformationIn>& transfers) {
   bool outputsAdded = false;
 
@@ -263,6 +284,7 @@ bool TransfersContainer::addTransactionOutputs(const TransactionBlockInfo& block
     }
 
     TransactionOutputInformationEx info;
+    info.trackingMode = trackingMode;
     static_cast<TransactionOutputInformationIn&>(info) = transfer;
     info.blockHeight = block.height;
     info.transactionIndex = block.transactionIndex;
@@ -277,7 +299,7 @@ bool TransfersContainer::addTransactionOutputs(const TransactionBlockInfo& block
     } else {
       if (info.type == TransactionTypes::OutputType::Key) {
         bool duplicate = false;
-        SpentOutputDescriptor descriptor(transfer);
+    SpentOutputDescriptor descriptor(transfer, trackingMode);
 
         auto availableRange = m_availableTransfers.get<SpentOutputDescriptorIndex>().equal_range(descriptor);
         for (auto it = availableRange.first; !duplicate && it != availableRange.second; ++it) {
@@ -293,18 +315,17 @@ bool TransfersContainer::addTransactionOutputs(const TransactionBlockInfo& block
           }
         }
 
+        auto trackingModeSpentRange = m_trackingModeSpentTransfers.get<SpentOutputDescriptorIndex>().equal_range(descriptor);
+        for (auto it = trackingModeSpentRange.first; !duplicate && it != trackingModeSpentRange.second; ++it) {
+          if (it->transactionHash == info.transactionHash && it->outputInTransaction == info.outputInTransaction) {
+            duplicate = true;
+          }
+        }
+
         if (duplicate) {
           auto message = "Failed to add transaction output: key output already exists";
           m_logger(ERROR, BRIGHT_RED) << message << ", transaction hash " << info.transactionHash << ", output index " << info.outputInTransaction <<
             ", key image " << info.keyImage;
-          throw std::runtime_error(message);
-        }
-      } else if (info.type == TransactionTypes::OutputType::Multisignature) {
-        SpentOutputDescriptor descriptor(transfer);
-        if (m_availableTransfers.get<SpentOutputDescriptorIndex>().count(descriptor) > 0 ||
-            m_spentTransfers.get<SpentOutputDescriptorIndex>().count(descriptor) > 0) {
-          auto message = "Failed to add transaction output: multisignature output already exists";
-          m_logger(ERROR, BRIGHT_RED) << message << ", amount " << m_currency.formatAmount(info.amount) << ", global index " << info.globalOutputIndex;
           throw std::runtime_error(message);
         }
       }
@@ -315,7 +336,11 @@ bool TransfersContainer::addTransactionOutputs(const TransactionBlockInfo& block
     }
 
     if (info.type == TransactionTypes::OutputType::Key) {
+    if (trackingMode == 0) {
       updateTransfersVisibility(info.keyImage);
+    } else {
+      updateTrackingTransfersVisibility(info.amount, info.globalOutputIndex);
+    }
     }
 
     outputsAdded = true;
@@ -398,16 +423,57 @@ bool TransfersContainer::addTransactionInputs(const TransactionBlockInfo& block,
       updateTransfersVisibility(input.keyImage);
 
       inputsAdded = true;
-    } else if (inputType == TransactionTypes::InputType::Multisignature) {
-      MultisignatureInput input;
+    } else {
+      assert(inputType == TransactionTypes::InputType::Generating);
+    }
+  }
+
+  return inputsAdded;
+}
+
+bool TransfersContainer::addTransactionTrackingModeInputs(const TransactionBlockInfo& block, const ITransactionReader& tx) {
+  bool trackingMode = 1;
+  bool inputsAdded = false;
+  for (size_t i = 0; i < tx.getInputCount(); ++i) {
+    auto inputType = tx.getInputType(i);
+
+    if (inputType == TransactionTypes::InputType::Key) {
+      KeyInput input;
       tx.getInput(i, input);
 
-      auto& outputDescriptorIndex = m_availableTransfers.get<SpentOutputDescriptorIndex>();
-      auto availableOutputIt = outputDescriptorIndex.find(SpentOutputDescriptor(input.amount, input.outputIndex));
-      if (availableOutputIt != outputDescriptorIndex.end()) {
-        copyToSpent(block, tx, i, *availableOutputIt);
-        // erase from available outputs
-        outputDescriptorIndex.erase(availableOutputIt);
+      for (auto j = input.outputIndexes.begin(); j != input.outputIndexes.end(); ++j) {
+        SpentOutputDescriptor descriptor(input.amount, *j, trackingMode);
+        auto availableRange = m_availableTransfers.get<SpentOutputDescriptorIndex>().equal_range(descriptor);
+        auto unconfirmedRange = m_unconfirmedTransfers.get<SpentOutputDescriptorIndex>().equal_range(descriptor);
+        size_t availableCount = std::distance(availableRange.first, availableRange.second);
+        size_t unconfirmedCount = std::distance(unconfirmedRange.first, unconfirmedRange.second);
+
+        if (availableCount == 0) {
+          if (unconfirmedCount > 0) {
+            auto message = "Failed to add key input: spend output of unconfirmed transaction";
+            m_logger(ERROR, BRIGHT_RED) << message << ", key image " << input.keyImage;
+            throw std::runtime_error(message);
+          } else {
+            // This input doesn't spend any transfer from this container
+            continue;
+          }
+        }
+
+        auto& outputDescriptorIndex = m_availableTransfers.get<SpentOutputDescriptorIndex>();
+        auto availableOutputsRange = outputDescriptorIndex.equal_range(descriptor);
+
+        auto iteratorList = createTransferIteratorList(availableOutputsRange);
+        iteratorList.sort();
+        auto spendingTransferIt = iteratorList.findFirstByAmount(input.amount);
+
+        if (spendingTransferIt == availableOutputsRange.second) {
+          auto message = "Failed to add key input: invalid amount";
+          m_logger(ERROR, BRIGHT_RED) << message << ", key image " << input.keyImage << ", amount " << m_currency.formatAmount(input.amount);
+          throw std::runtime_error(message);
+        }
+
+        trackingModeCopyToSpent(block, tx, i, *spendingTransferIt);
+        updateTrackingTransfersVisibility(input.amount, spendingTransferIt->globalOutputIndex);
 
         inputsAdded = true;
       }
@@ -418,7 +484,6 @@ bool TransfersContainer::addTransactionInputs(const TransactionBlockInfo& block,
 
   return inputsAdded;
 }
-
 bool TransfersContainer::deleteUnconfirmedTransaction(const Hash& transactionHash) {
   std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -435,6 +500,11 @@ bool TransfersContainer::deleteUnconfirmedTransaction(const Hash& transactionHas
 }
 
 bool TransfersContainer::markTransactionConfirmed(const TransactionBlockInfo& block, const Hash& transactionHash,
+                                                  const std::vector<uint32_t>& globalIndices) {
+  return markTransactionConfirmed(0, block, transactionHash, globalIndices);
+}
+
+bool TransfersContainer::markTransactionConfirmed(const bool trackingMode, const TransactionBlockInfo& block, const Hash& transactionHash,
                                                   const std::vector<uint32_t>& globalIndices) {
   if (block.height == WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT) {
     auto message = "Failed to confirm transaction: block height is unconfirmed";
@@ -474,17 +544,6 @@ bool TransfersContainer::markTransactionConfirmed(const TransactionBlockInfo& bl
       transfer.transactionIndex = block.transactionIndex;
       transfer.globalOutputIndex = globalIndices[transfer.outputInTransaction];
 
-      if (transfer.type == TransactionTypes::OutputType::Multisignature) {
-        SpentOutputDescriptor descriptor(transfer);
-        if (m_availableTransfers.get<SpentOutputDescriptorIndex>().count(descriptor) > 0 ||
-            m_spentTransfers.get<SpentOutputDescriptorIndex>().count(descriptor) > 0) {
-          // This exception breaks TransfersContainer consistency
-          auto message = "Failed to confirm transaction: multisignature output already exists";
-          m_logger(ERROR, BRIGHT_RED) << message << ", amount " << m_currency.formatAmount(transfer.amount) << ", global index " << transfer.globalOutputIndex;
-          throw std::runtime_error(message);
-        }
-      }
-
       auto result = m_availableTransfers.emplace(std::move(transfer));
       (void)result; // Disable unused warning
       assert(result.second);
@@ -492,7 +551,11 @@ bool TransfersContainer::markTransactionConfirmed(const TransactionBlockInfo& bl
       transferIt = m_unconfirmedTransfers.get<ContainingTransactionIndex>().erase(transferIt);
 
       if (transfer.type == TransactionTypes::OutputType::Key) {
-        updateTransfersVisibility(transfer.keyImage);
+    if (trackingMode == 0) {
+      updateTransfersVisibility(transfer.keyImage);
+    } else {
+      updateTrackingTransfersVisibility(transfer.amount, transfer.globalOutputIndex);
+    }
       }
     }
 
@@ -504,6 +567,16 @@ bool TransfersContainer::markTransactionConfirmed(const TransactionBlockInfo& bl
 
       transfer.spendingBlock = block;
       spendingTransactionIndex.replace(transferIt, transfer);
+    }
+
+    auto& trackingModeSpendingTransactionIndex = m_trackingModeSpentTransfers.get<SpendingTransactionIndex>();
+    auto trackingModeSpentRange = trackingModeSpendingTransactionIndex.equal_range(transactionHash);
+    for (auto transferIt = trackingModeSpentRange.first; transferIt != trackingModeSpentRange.second; ++transferIt) {
+      auto transfer = *transferIt;
+      assert(transfer.spendingBlock.height == WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT);
+
+      transfer.spendingBlock = block;
+      trackingModeSpendingTransactionIndex.replace(transferIt, transfer);
     }
   } catch (std::exception& e) {
     m_logger(ERROR, BRIGHT_RED) << "markTransactionConfirmed failed: " << e.what() << ", rollback changes, block index " << block.height <<
@@ -545,6 +618,17 @@ bool TransfersContainer::markTransactionConfirmed(const TransactionBlockInfo& bl
       spendingTransactionIndex.replace(transferIt, spentTransfer);
     }
 
+    auto& trackingModeSpendingTransactionIndex = m_trackingModeSpentTransfers.get<SpendingTransactionIndex>();
+    auto trackingModeSpentRange = trackingModeSpendingTransactionIndex.equal_range(transactionHash);
+    for (auto transferIt = trackingModeSpentRange.first; transferIt != trackingModeSpentRange.second; ++transferIt) {
+      auto trackingModeSpentTransfer = *transferIt;
+      trackingModeSpentTransfer.spendingBlock.height = WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT;
+      trackingModeSpentTransfer.spendingBlock.timestamp = 0;
+      trackingModeSpentTransfer.spendingBlock.transactionIndex = 0;
+
+      trackingModeSpendingTransactionIndex.replace(transferIt, trackingModeSpentTransfer);
+    }
+
     throw;
   }
 
@@ -555,6 +639,20 @@ bool TransfersContainer::markTransactionConfirmed(const TransactionBlockInfo& bl
  * \pre m_mutex is locked.
  */
 void TransfersContainer::deleteTransactionTransfers(const Hash& transactionHash) {
+  auto& trackingModeSpendingTransactionIndex = m_trackingModeSpentTransfers.get<SpendingTransactionIndex>();
+  auto trackingModeSpentTransfersRange = trackingModeSpendingTransactionIndex.equal_range(transactionHash);
+  for (auto it = trackingModeSpentTransfersRange.first; it != trackingModeSpentTransfersRange.second;) {
+    assert(it->blockHeight != WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT);
+    assert(it->globalOutputIndex != UNCONFIRMED_TRANSACTION_GLOBAL_OUTPUT_INDEX);
+
+    auto result = m_availableTransfers.emplace(static_cast<const TransactionOutputInformationEx&>(*it));
+    assert(result.second);
+    it = trackingModeSpendingTransactionIndex.erase(it);
+    if (result.first->type == TransactionTypes::OutputType::Key) {
+      updateTrackingTransfersVisibility(result.first->amount, result.first->globalOutputIndex);
+    }
+  }
+
   auto& spendingTransactionIndex = m_spentTransfers.get<SpendingTransactionIndex>();
   auto spentTransfersRange = spendingTransactionIndex.equal_range(transactionHash);
   for (auto it = spentTransfersRange.first; it != spentTransfersRange.second;) {
@@ -612,6 +710,21 @@ void TransfersContainer::copyToSpent(const TransactionBlockInfo& block, const IT
   assert(result.second);
 }
 
+void TransfersContainer::trackingModeCopyToSpent(const TransactionBlockInfo& block, const ITransactionReader& tx, size_t inputIndex,
+                                     const TransactionOutputInformationEx& output) {
+  assert(output.blockHeight != WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT);
+  assert(output.globalOutputIndex != UNCONFIRMED_TRANSACTION_GLOBAL_OUTPUT_INDEX);
+
+  SpentTransactionOutput spentOutput;
+  static_cast<TransactionOutputInformationEx&>(spentOutput) = output;
+  spentOutput.spendingBlock = block;
+  spentOutput.spendingTransactionHash = tx.getTransactionHash();
+  spentOutput.inputInTransaction = static_cast<uint32_t>(inputIndex);
+  auto result = m_trackingModeSpentTransfers.emplace(std::move(spentOutput));
+  (void)result; // Disable unused warning
+  assert(result.second);
+}
+
 std::vector<Hash> TransfersContainer::detach(uint32_t height) {
   // This method expects that WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT is a big positive number
   assert(height < WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT);
@@ -619,6 +732,7 @@ std::vector<Hash> TransfersContainer::detach(uint32_t height) {
   std::lock_guard<std::mutex> lk(m_mutex);
 
   std::vector<Hash> deletedTransactions;
+  auto& trackingModeSpendingTransactionIndex = m_trackingModeSpentTransfers.get<SpendingTransactionIndex>();
   auto& spendingTransactionIndex = m_spentTransfers.get<SpendingTransactionIndex>();
   auto& blockHeightIndex = m_transactions.get<1>();
   auto it = blockHeightIndex.end();
@@ -627,6 +741,13 @@ std::vector<Hash> TransfersContainer::detach(uint32_t height) {
 
     bool doDelete = false;
     if (it->blockHeight == WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT) {
+      auto trackingModeRange = trackingModeSpendingTransactionIndex.equal_range(it->transactionHash);
+      for (auto spentTransferIt = trackingModeRange.first; spentTransferIt != trackingModeRange.second; ++spentTransferIt) {
+        if (spentTransferIt->blockHeight >= height) {
+          doDelete = true;
+          break;
+        }
+      }
       auto range = spendingTransactionIndex.equal_range(it->transactionHash);
       for (auto spentTransferIt = range.first; spentTransferIt != range.second; ++spentTransferIt) {
         if (spentTransferIt->blockHeight >= height) {
@@ -667,6 +788,32 @@ namespace {
 /**
  * \pre m_mutex is locked.
  */
+/**
+ * \pre m_mutex is locked.
+ */
+void TransfersContainer::updateTrackingTransfersVisibility(const uint64_t amount, const uint32_t globalOutputIndex, const bool trackingMode) {
+  auto& unconfirmedIndex = m_unconfirmedTransfers.get<SpentOutputDescriptorIndex>();
+  auto& availableIndex = m_availableTransfers.get<SpentOutputDescriptorIndex>();
+  auto& spentIndex = m_trackingModeSpentTransfers.get<SpentOutputDescriptorIndex>();
+
+  SpentOutputDescriptor descriptor(amount, globalOutputIndex, trackingMode);
+  auto unconfirmedRange = unconfirmedIndex.equal_range(descriptor);
+  auto availableRange = availableIndex.equal_range(descriptor);
+  auto spentRange = spentIndex.equal_range(descriptor);
+
+  size_t unconfirmedCount = std::distance(unconfirmedRange.first, unconfirmedRange.second);
+  size_t spentCount = std::distance(spentRange.first, spentRange.second);
+  assert(spentCount == 0 || spentCount == 1);
+
+  if (spentCount > 0) {
+    updateVisibility(unconfirmedIndex, unconfirmedRange, false);
+//    updateVisibility(availableIndex, availableRange, false);
+    updateVisibility(spentIndex, spentRange, true);
+  } else {
+    updateVisibility(unconfirmedIndex, unconfirmedRange, unconfirmedCount == 1);
+  }
+}
+
 void TransfersContainer::updateTransfersVisibility(const KeyImage& keyImage) {
   auto& unconfirmedIndex = m_unconfirmedTransfers.get<SpentOutputDescriptorIndex>();
   auto& availableIndex = m_availableTransfers.get<SpentOutputDescriptorIndex>();
@@ -715,7 +862,7 @@ bool TransfersContainer::advanceHeight(uint32_t height) {
 
 size_t TransfersContainer::transfersCount() const {
   std::lock_guard<std::mutex> lk(m_mutex);
-  return m_unconfirmedTransfers.size() + m_availableTransfers.size() + m_spentTransfers.size();
+  return m_unconfirmedTransfers.size() + m_availableTransfers.size() + m_spentTransfers.size() + m_trackingModeSpentTransfers.size();
 }
 
 size_t TransfersContainer::transactionsCount() const {
@@ -900,6 +1047,7 @@ void TransfersContainer::save(std::ostream& os) {
   writeSequence<TransactionOutputInformationEx>(m_unconfirmedTransfers.begin(), m_unconfirmedTransfers.end(), "unconfirmedTransfers", s);
   writeSequence<TransactionOutputInformationEx>(m_availableTransfers.begin(), m_availableTransfers.end(), "availableTransfers", s);
   writeSequence<SpentTransactionOutput>(m_spentTransfers.begin(), m_spentTransfers.end(), "spentTransfers", s);
+  writeSequence<SpentTransactionOutput>(m_trackingModeSpentTransfers.begin(), m_trackingModeSpentTransfers.end(), "trackingModeSpentTransfers", s);
 }
 
 void TransfersContainer::load(std::istream& in) {
@@ -921,18 +1069,21 @@ void TransfersContainer::load(std::istream& in) {
   UnconfirmedTransfersMultiIndex unconfirmedTransfers;
   AvailableTransfersMultiIndex availableTransfers;
   SpentTransfersMultiIndex spentTransfers;
+  TrackingModeSpentTransfersMultiIndex trackingModeSpentTransfers;
 
   s(currentHeight, "height");
   readSequence<TransactionInformation>(std::inserter(transactions, transactions.end()), "transactions", s);
   readSequence<TransactionOutputInformationEx>(std::inserter(unconfirmedTransfers, unconfirmedTransfers.end()), "unconfirmedTransfers", s);
   readSequence<TransactionOutputInformationEx>(std::inserter(availableTransfers, availableTransfers.end()), "availableTransfers", s);
   readSequence<SpentTransactionOutput>(std::inserter(spentTransfers, spentTransfers.end()), "spentTransfers", s);
+  readSequence<SpentTransactionOutput>(std::inserter(trackingModeSpentTransfers, trackingModeSpentTransfers.end()), "trackingModeSpentTransfers", s);
 
   m_currentHeight = currentHeight;
   m_transactions = std::move(transactions);
   m_unconfirmedTransfers = std::move(unconfirmedTransfers);
   m_availableTransfers = std::move(availableTransfers);
   m_spentTransfers = std::move(spentTransfers);
+  m_trackingModeSpentTransfers = std::move(trackingModeSpentTransfers);
 
   // Repair the container if it was broken while handling addTransaction() in previous version of the code
   // Hope it isn't necessary anymore
@@ -941,6 +1092,39 @@ void TransfersContainer::load(std::istream& in) {
 
 void TransfersContainer::repair() {
   size_t deletedInputCount = 0;
+
+for (auto it = m_trackingModeSpentTransfers.begin(); it != m_trackingModeSpentTransfers.end();) {
+  assert(it->blockHeight != WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT);
+  assert(it->globalOutputIndex != UNCONFIRMED_TRANSACTION_GLOBAL_OUTPUT_INDEX);
+
+  if (m_transactions.count(it->spendingTransactionHash) == 0) {
+    bool isInputConfirmed = it->spendingBlock.height != WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT;
+    m_logger(WARNING, BRIGHT_YELLOW) << "Orphan input found, remove it and return output spent by them to available outputs:\n" <<
+      "    input       " <<
+      ": block " << std::setw(7) << (isInputConfirmed ? static_cast<int32_t>(it->spendingBlock.height) : -1) <<
+      ", transaction index " << std::setw(2) << (isInputConfirmed ? static_cast<int32_t>(it->spendingBlock.transactionIndex) : -1) <<
+      ", transaction hash " << it->spendingTransactionHash <<
+      ", input " << std::setw(3) << it->inputInTransaction << '\n' <<
+      "    spent output" <<
+      ": block " << std::setw(7) << it->blockHeight <<
+      ", transaction index " << std::setw(2) << it->transactionIndex <<
+      ", transaction hash " << it->transactionHash <<
+      ", output " << std::setw(2) << it->outputInTransaction;
+
+    auto result = m_availableTransfers.emplace(static_cast<const TransactionOutputInformationEx&>(*it));
+    assert(result.second);
+    it = m_trackingModeSpentTransfers.erase(it);
+
+    if (result.first->type == TransactionTypes::OutputType::Key) {
+      updateTrackingTransfersVisibility(result.first->amount, result.first->globalOutputIndex);
+    }
+
+    ++deletedInputCount;
+  } else {
+    ++it;
+  }
+}
+
   for (auto it = m_spentTransfers.begin(); it != m_spentTransfers.end();) {
     assert(it->blockHeight != WALLET_LEGACY_UNCONFIRMED_TRANSACTION_HEIGHT);
     assert(it->globalOutputIndex != UNCONFIRMED_TRANSACTION_GLOBAL_OUTPUT_INDEX);
@@ -1063,8 +1247,7 @@ bool TransfersContainer::isIncluded(TransactionTypes::OutputType type, uint32_t 
   return
     // filter by type
     (
-    ((flags & IncludeTypeKey) != 0            && type == TransactionTypes::OutputType::Key) ||
-    ((flags & IncludeTypeMultisignature) != 0 && type == TransactionTypes::OutputType::Multisignature)
+    ((flags & IncludeTypeKey) != 0 && type == TransactionTypes::OutputType::Key)
     )
     &&
     // filter by state

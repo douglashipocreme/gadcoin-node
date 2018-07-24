@@ -173,7 +173,10 @@ void WalletLegacy::initWithKeys(const AccountKeys& accountKeys, const std::strin
     }
 
     m_account.setAccountKeys(accountKeys);
-    m_account.set_createtime(ACCOUN_CREATE_TIME_ACCURACY);
+  uint64_t createTime = ACCOUN_CREATE_TIME_ACCURACY;
+  if (m_syncAll == 1)
+    createTime = 0;
+  m_account.set_createtime(createTime);
     m_password = password;
 
     initSync();
@@ -203,6 +206,8 @@ void WalletLegacy::initSync() {
   sub.transactionSpendableAge = 1;
   sub.syncStart.height = 0;
   sub.syncStart.timestamp = m_account.get_createtime() - ACCOUN_CREATE_TIME_ACCURACY;
+  if (m_syncAll == 1)
+    sub.syncStart.timestamp = 0;
   
   auto& subObject = m_transfersSync.addSubscription(sub);
   m_transferDetails = &subObject.getContainer();
@@ -595,6 +600,9 @@ void WalletLegacy::notifyIfBalanceChanged() {
 
 }
 
+void WalletLegacy::syncAll(bool syncWalletFromZero) {
+  m_syncAll = syncWalletFromZero;
+}
 void WalletLegacy::getAccountKeys(AccountKeys& keys) {
   if (m_state == NOT_INITIALIZED) {
     throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
