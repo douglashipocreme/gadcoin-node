@@ -1063,6 +1063,21 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   b.previousBlockHash = getTopBlockHash();
   b.timestamp = time(nullptr);
 
+ // https://github.com/graft-project/GraftNetwork/pull/118/commits
+  // Thanks Jagerman for this
+  // adapted from monero code by stevebrush for bytecoin 2 code
+
+
+  if(height >= currency.timestampCheckWindow()) {
+      std::vector<uint64_t> timestamps;
+      for(size_t offset = height - currency.timestampCheckWindow(); offset < height; ++offset){
+          timestamps.push_back(getBlockTimestampByIndex(offset));
+      }
+      uint64_t median_ts = Common::medianValue(timestamps);
+      if (b.timestamp < median_ts) {
+          b.timestamp = median_ts;
+      }
+  }
   size_t medianSize = calculateCumulativeBlocksizeLimit(height) / 2;
 
   assert(!chainsStorage.empty());
