@@ -31,7 +31,7 @@ const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 20844;
 const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW         = 14;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 500;
 
-const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
+const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 11;
 
 // MONEY_SUPPLY - total number coins to be generated
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(18446744073709551615);
@@ -41,7 +41,7 @@ const uint32_t MIXIN_START_HEIGHT                          = 0;
 const uint32_t MANDATORY_TRANSACTION                          = 0;
 const uint32_t KILL_HEIGHT                          = 0;
 const uint64_t TAIL_EMISSION_REWARD                          = 0;
-const uint32_t ZAWY_LWMA2_DIFFICULTY_BLOCK_INDEX                 = 115000;
+const uint32_t ZAWY_LWMA2_DIFFICULTY_BLOCK_INDEX                 = 120000;
 const uint32_t ZAWY_LWMA2_DIFFICULTY_LAST_BLOCK                 = uint32_t(-1);
 const uint64_t ZAWY_LWMA2_DIFFICULTY_MIN                 = 1;
 const size_t ZAWY_LWMA2_DIFFICULTY_N                 = 70+1;
@@ -90,8 +90,8 @@ const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
 const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
-const uint32_t UPGRADE_HEIGHT_V2                                = 2;
-const uint32_t UPGRADE_HEIGHT_V3                                = 115000;
+const uint32_t UPGRADE_HEIGHT_V2                                = 1;
+const uint32_t UPGRADE_HEIGHT_V3                                = 2;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
