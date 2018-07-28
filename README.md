@@ -1,3 +1,11 @@
+# Mandatoty Update
+
+# Please update all nodes to this version!
+
+
+Gui wallet will be published soon!
+
+
 Gadcoin is a cryptocurrency focused on providing a decentralized mechanism of exchange, and anonymity via untraceable and unlinkable transactions.
 
 ## Building Gadcoin
