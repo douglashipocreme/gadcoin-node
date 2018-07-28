@@ -641,11 +641,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
   } 
-<<<<<<< HEAD
 
-=======
 // Blockchain sync 
->>>>>>> gad-lwma2
   //else if (!currency.checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
    // logger(Logging::WARNING) << "Proof of work too weak for block " << cachedBlock.getBlockHash();
   //  return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
