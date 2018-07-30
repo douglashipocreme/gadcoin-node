@@ -1,3 +1,8 @@
+Release notes 2.1.2
+- Add lwma2 diff algo 
+- new config to new features
+
+
 Release notes 2.1.0
 
 - Transaction pool issue fixes
