@@ -42,11 +42,11 @@ const uint32_t MANDATORY_TRANSACTION                          = 0;
 const uint32_t KILL_HEIGHT                          = 0;
 const uint64_t TAIL_EMISSION_REWARD                          = 0;
 const uint32_t ZAWY_LWMA2_DIFFICULTY_BLOCK_INDEX                 = 120000;
-const uint32_t ZAWY_LWMA2_DIFFICULTY_LAST_BLOCK                 = uint32_t(-1);
+const uint32_t ZAWY_LWMA2_DIFFICULTY_LAST_BLOCK                 = 4294967295;
 const uint64_t ZAWY_LWMA2_DIFFICULTY_MIN                 = 1;
 const size_t ZAWY_LWMA2_DIFFICULTY_N                 = 70+1;
 const unsigned EMISSION_SPEED_FACTOR                         = 21;
-const uint64_t GENESIS_BLOCK_REWARD                          = UINT64_C(0);
+const uint64_t GENESIS_BLOCK_REWARD                          = UINT64_C(1844674407370955300);
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
@@ -74,7 +74,7 @@ const size_t   DIFFICULTY_LAG_V1                             = 15;
 const size_t   DIFFICULTY_LAG_V2                             = 15;
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-const size_t   MAX_BLOCK_SIZE_INITIAL                        = 100000;
+const size_t   MAX_BLOCK_SIZE_INITIAL                        = 10000000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 
@@ -127,8 +127,8 @@ const int      RPC_DEFAULT_PORT                              =  36842;
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
 
-const size_t   P2P_CONNECTION_MAX_WRITE_BUFFER_SIZE          = 32 * 1024 * 1024; // 32 MB
-const uint32_t P2P_DEFAULT_CONNECTIONS_COUNT                 = 8;
+const size_t   P2P_CONNECTION_MAX_WRITE_BUFFER_SIZE          = 64 * 1024 * 1024; // 32 MB
+const uint32_t P2P_DEFAULT_CONNECTIONS_COUNT                 = 32;
 const size_t   P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT     = 70;
 const uint32_t P2P_DEFAULT_HANDSHAKE_INTERVAL                = 60;            // seconds
 const uint32_t P2P_DEFAULT_PACKET_MAX_SIZE                   = 50000000;      // 50000000 bytes maximum packet size
@@ -145,7 +145,7 @@ const uint32_t  P2P_IDLE_CONNECTION_KILL_INTERVAL               = (5*60); //5 mi
 
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "";
 
-const char* const SEED_NODES[] = { "165.227.198.22:36841", "67.205.162.81:36841" };
+const char* const SEED_NODES[] = { "165.227.198.22:36841", "167.99.233.250:36841", "67.205.162.81:36841" };
 
 struct CheckpointData {
   uint32_t index;
