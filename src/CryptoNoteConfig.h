@@ -63,7 +63,7 @@ const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = 100000000000000;
 
 const uint64_t DIFFICULTY_TARGET                             = 90; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
-const size_t   DIFFICULTY_WINDOW                                = 17;
+const size_t   DIFFICULTY_WINDOW                             = int(EXPECTED_NUMBER_OF_BLOCKS_PER_DAY/10);
 const size_t   DIFFICULTY_WINDOW_V1                          = 960;
 const size_t   DIFFICULTY_WINDOW_V2                          = 960;
 const size_t   DIFFICULTY_CUT                                = 0;  // timestamps to cut after sorting
