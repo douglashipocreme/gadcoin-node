@@ -437,7 +437,7 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
 
     return true;
   } catch (std::exception&) {
-    // TODO log
+    logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
     return false;
   }
 }
